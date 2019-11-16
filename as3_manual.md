@@ -1,4 +1,4 @@
-![AS3 Logo](../www/AS3_Robot.png)
+![AS3 Logo](./AS3_Robot.png)
 
 # The AS3 Manual
 
@@ -12,7 +12,7 @@ Skip Ahead
 - [API reference](#as3-rest-api-endpoints)
 - [AS3 Schema Reference](#as3-schema-reference)
 
-This guide is for anyone looking to get started with AS3 and already has a basic familiarity with BIG-IP. This guide assumes understanding of the HTTP protocol. Use of a REST client like curl or Postman is recommended. 
+This guide is for anyone looking to get started with AS3 and already has a basic familiarity with BIG-IP. This guide assumes understanding of the HTTP protocol. Use of a REST client like curl or Postman is recommended.
 
 ----------
 
@@ -37,7 +37,7 @@ More examples can be found in [AS3 Example Declarations](#as3-example-declaratio
 
 ```
 POST https://bigip.example.com/mgmt/shared/appsvcs/declare
-Authorization: BASIC 
+Authorization: BASIC
 Content-Type: application/json
 
 {
@@ -88,7 +88,7 @@ Once the configuration is applied, a GET to the same endpoint produces the curre
 
 ```
 GET https://bigip.example.com/mgmt/shared/appsvcs/declare
-Authorization: BASIC 
+Authorization: BASIC
 Content-Type: application/json
 ```
 
@@ -97,17 +97,17 @@ Content-Type: application/json
 The following links are recommended reading from the official AS3 documentation.
 
 
-| Link | Description | 
+| Link | Description |
 | ---- | ---- |
-| [AS3 Overview](https://youtu.be/cMl3AOtMcUo) | | 
+| [AS3 Overview](https://youtu.be/cMl3AOtMcUo) | |
 | [Install/Uninstall AS3](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/installation.html) | |
-| [Authentication and Authorization](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/authentication.html) | | 
-| [Composing an AS3 Declaration](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/composing-a-declaration.html) | | 
-| [Validating a Declaration](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/validate.html). | | 
-| [AS3 Declaration Purpose and Function](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/declaration-purpose-function.html) | | 
-| [F5 JSON Schema](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/understanding-the-json-schema.html) | | 
-| [AS3 Schema Reference](#as3-schema-reference) | | 
-| | 
+| [Authentication and Authorization](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/authentication.html) | |
+| [Composing an AS3 Declaration](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/composing-a-declaration.html) | |
+| [Validating a Declaration](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/validate.html). | |
+| [AS3 Declaration Purpose and Function](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/declaration-purpose-function.html) | |
+| [F5 JSON Schema](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/understanding-the-json-schema.html) | |
+| [AS3 Schema Reference](#as3-schema-reference) | |
+| |
 | [Official AS3 Documentation from F5](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/) | Top level documentation link for AS3. |
 | [GitHub](https://github.com/F5Networks/f5-appsvcs-extension) | New releases, updated schema, and file issue. |
 
@@ -116,12 +116,12 @@ The following links are recommended reading from the official AS3 documentation.
 # Guide
 
 ## Preface: Why AS3?
- 
+
 Application Services 3 (AS3) is a declarative JSON API for configuring F5 BIG-IP. AS3 provides a consistent, stable, and transparent way to change your BIG-IP configuration in a single API call.
 
-AS3 is _declarative_, meaning instead of giving it a sequence of instructions, you tell AS3 the final state of your config and AS3 makes it happen. No more worrying about configuration dependencies within the BIG-IP.
+AS3 is _declarative_, meaning instead of giving it a sequence of instructions, you describe the desired state of your config and AS3 makes it happen. No more worrying about configuration dependencies within the BIG-IP.
 
-AS3 is _idempotent_, meaning the same declaration produces the same results _every time_. The previous configuration has no bearing on the meaning of the current configuration being posted. 
+AS3 is _idempotent_, meaning the same declaration produces the same results _every time_. The previous configuration has no bearing on the meaning of the current configuration being posted.
 
 Most of all AS3 will remain _backward compatible_ with old declarations. This AS3 team is committed to providing updates that will not break existing declarations.
 
@@ -132,7 +132,7 @@ Most of all AS3 will remain _backward compatible_ with old declarations. This AS
  */
 ```
 
-## Chapter 1: yak shaving
+## Chapter 0: Verifying Installation
 
 [Install AS3](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/installation.html)
 
@@ -140,7 +140,7 @@ Using the the BIG-IP's `admin` username and password, the installation can be ve
 
 ```
 GET https://bigip.example.com/mgmt/shared/appsvcs/info
-Authorization: BASIC 
+Authorization: BASIC
 Content-Type: application/json
 ```
 
@@ -148,19 +148,19 @@ Content-Type: application/json
 
 Now that we have AS3 installed on a BIG-IP, we can start working with the BIG-IP configuration. In the next chapter, we'll learn about AS3's primary API endpoint, and how to use it.
 
-## Chapter 2: well, I declare
+## Chapter 1: AS3 Basics
 
 ### AS3 /declare endpoint
 
-This section focuses on basic interactions with AS3's primary HTTP endpoint `/mgmt/shared/appsvcs/declare` and using this endpoint to apply a simple BIG-IP configuration. This endpoint supports two primary methods: GET and POST. A GET request will return a JSON object with the declaration for the current BIG-IP configuation. Let's try that now. 
+This section focuses on basic interactions with AS3's primary HTTP endpoint `/mgmt/shared/appsvcs/declare` and using this endpoint to apply a simple BIG-IP configuration. This endpoint supports two primary methods: GET and POST. A GET request will return a JSON object with the declaration for the current BIG-IP configuation. Let's try that now.
 
 ```
 GET https://bigip.example.com/mgmt/shared/appsvcs/info
-Authorization: BASIC 
+Authorization: BASIC
 Content-Type: application/json
 ```
 
-If this is the first time using AS3, on an unconfigured BIG-IP, this endpoint will return a `204` status code with no body. This means AS3 is installed, and there is no configuration. If BIG-IP has previously been configured through AS3, the response body will contain a json object with the current BIG-IP configuration, also known as a declaration.
+If this is the first time using AS3, on an unconfigured BIG-IP, this endpoint will return a `204` status code with no body. This means AS3 is installed, and there is no configuration present on BIG-IP. If BIG-IP has previously been configured through AS3, the response body will contain a JSON object with the current BIG-IP configuration, also known as a declaration.
 
 This endpoint also accepts POST requests, with a declaration specified in the body. Let's take a look at the elements of that declaration, and how to build one from scratch.
 
@@ -168,7 +168,7 @@ This endpoint also accepts POST requests, with a declaration specified in the bo
 
 An AS3 declaration is a JSON object that conforms to a JSON schema, and can be edited in any text editor, or directly in Postman. We publish the schema and it can be used with VS Code in particular to provide hints while authoring. Instructions to use this feature are outlined in [Validating a Declaration](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/validate.html).
 
-With text editors at hand... lets take a look at our first AS3 declaration. 
+With text editors at hand... lets take a look at our first AS3 declaration.
 
 
 ```json
@@ -178,7 +178,9 @@ With text editors at hand... lets take a look at our first AS3 declaration.
 }
 ```
 
-This is the most basic declaration, specifying a no-op. AS3 objects often have a `class` property attached, this is an example of the `ADC` class and is the container for all AS3 configuration. In examples this class is sometimes contained inside an even higher level `AS3` class, but either class can be used as the root object when posting a declaration. The `AS3` class provides some extra features described in later sections and can be ignored for now.
+This is the most basic declaration, specifying a no-op. AS3 objects often have a `class` property that identifies what type of JSON object we are creating or reading. Each class may have its own set of required and default properties and represents a configuration object in AS3.
+
+This example shows an `ADC` object. The `ADC` object is the root object of an AS3 declaration.
 
 POSTing this declaration to `/mgmt/shared/appsvcs/declare` using Basic authentication will produce a "no change" message from AS3.
 
@@ -205,16 +207,27 @@ POSTing this declaration to `/mgmt/shared/appsvcs/declare` using Basic authentic
 
 ```
 /**
- * VSCode will provide validation hints if the $schema property is set to the url of the AS3 schema
+ * VSCode will provide validation hints if the $schema property is set to the
+ * url of the AS3 schema:
  * https://raw.githubusercontent.com/F5Networks/f5-appsvcs-extension/master/schema/latest/as3-schema.json
  */
 ```
+
+```
+/**
+ * Some examples in the documentation use an `AS3` object with an `ADC` class
+ * object specified at the `declaration` property. The `AS3` class provides some
+ * extra features and controls which we will explore later, but for now we can
+ * think of the `ADC` class as being the root of our declaration.  
+ */
+```
+
 
 Lets actually add some BIG-IP configuration. Here we'll create a simple HTTP virtual service load balancing to a pool with 2 members.
 
 AS3 organizes components inside of Applications, and Applications are grouped together into Tenants. A Tenant might represent a business unit, or a user, or some other grouping of applications owned and maintained together. An Application contains the component configuration connecting your VIP or VIPs to the servers in a pool.
 
-Tenants are described in the declaration by adding a new property to our previous JSON object, and assigning another object to it with the "class" property set to Tenant. Adding a tenant named DavidTennant results in this declaration:
+Tenants are described in the declaration by adding a new property to our previous JSON object, and assigning another object to it with the "class" property set to Tenant. Adding a tenant named DavidTennant would look like this:
 
 ```
 {
@@ -232,7 +245,7 @@ We've added a tenant but we still haven't _actually_ configured anything. So let
 
 ```
 POST https://bigip.example.com/mgmt/shared/appsvcs/declare
-Authorization: BASIC 
+Authorization: BASIC
 Content-Type: application/json
 ```
 ```json
@@ -278,7 +291,7 @@ Next we see a new property `"template" : "http"`, this property works in conjuct
 
 `serviceMain` has our virtual server definition, and points to a pool. It is a service, denoted by the class `Service_HTTP`. The virtual addresses to use are listed in the `virtualAddresses` array, and as previously mentioned it will host on port 80. The server pool it will use is specified under `web_pool`. The string `web_pool` points to another property in the top level `Application` object. `web_pool` is the next property on the list.
 
-Inside `web_pool` we see it is a `Pool` class, specifying `members` with an array of objects with ip/port pairs. The important part to note here is the servicePort and serverAddresses, these specify the backend server IPs and the port they use to host. 
+Inside `web_pool` we see it is a `Pool` class, specifying `members` with an array of objects with ip/port pairs. The important part to note here is the servicePort and serverAddresses, these specify the backend server IPs and the port they use to host.
 
 Briefly covering a few example scenarios with multiple ip/port combinations on backend servers:
 
@@ -402,7 +415,7 @@ AS3 responds with a results array member corresponding to the tenant that was po
 
 ```
 GET https://bigip.example.com/mgmt/shared/appsvcs/declare
-Authorization: BASIC 
+Authorization: BASIC
 Content-Type: application/json
 ```
 
@@ -418,7 +431,7 @@ AS3 uses a diff engine to determine which configuration changes need to be made,
 /**
  *  Because AS3 will make any changes necessary to finish in the state described in the declaration,
  *  manual configuration changes made to BIG-IP will likely be lost. It is not recommended to make
- *  changes to a BIG-IP that is configured through AS3 except in certain cases. 
+ *  changes to a BIG-IP that is configured through AS3 except in certain cases.
  */
 ```
 
@@ -454,7 +467,7 @@ Sometimes, you can point to other places in the declaration when specifying an o
 }
 ```
 
-This is an example of the simplest reference in an AS3 declaration. Inside the `Application` object is a property called `web_pool`, and the `pool` property of `serviceMain` has a value of `web_pool` pointing to the value specified inside the Application. These properties are only available to the application they are defined within. This pool could be used for another vip inside this application, but could not be used by other application objects. 
+This is an example of the simplest reference in an AS3 declaration. Inside the `Application` object is a property called `web_pool`, and the `pool` property of `serviceMain` has a value of `web_pool` pointing to the value specified inside the Application. These properties are only available to the application they are defined within. This pool could be used for another vip inside this application, but could not be used by other application objects.
 
 For more details, and to see other ways to 'point' to objects on the BIG-IP and in the declaration, the following documentation is recommended:
 
@@ -464,7 +477,7 @@ For more details, and to see other ways to 'point' to objects on the BIG-IP and 
 
 ## Chapter 4: BIG-IP Features in AS3
 
-Here we will use conventions we already know about to introduce some commonly used BIG-IP components to the declaration. At the end of the chapter we will have a declaration that contains many BIG-IP features that can be used as a starting point when writing new declarations. 
+Here we will use conventions we already know about to introduce some commonly used BIG-IP components to the declaration. At the end of the chapter we will have a declaration that contains many BIG-IP features that can be used as a starting point when writing new declarations.
 
 ### Adding https
 
@@ -494,7 +507,7 @@ The Certificate will also be added:
    }
 ```
 
-Certificates can be protected by passphrase, but this declaration does not use a passphrase protected key. 
+Certificates can be protected by passphrase, but this declaration does not use a passphrase protected key.
 
 *In the service:
 
@@ -550,7 +563,7 @@ Putting it all together we have:
          "certificate": " {{ User Generated Certificate }}",
          "privateKey": " {{ Generated Private Key matching Certificate }} "
       }
-      
+
     }
   }
 }
@@ -617,7 +630,7 @@ HTTPS with a Monitor:
          "certificate": " {{ User Generated Certificate }}",
          "privateKey": " {{ Generated Private Key matching Certificate }} "
       }
-      
+
     }
   }
 }
@@ -625,7 +638,7 @@ HTTPS with a Monitor:
 
 ### Apply WAF Profile
 
-WAF policies can be applied using the `policyWAF` property of the Application class. 
+WAF policies can be applied using the `policyWAF` property of the Application class.
 
 Applying a WAF profile uses a different kind of pointer than what we've seen so far. In this instance the declaration points to a WAF profile that already exists on BIG-IP. Shown is a `bigip` pointer to a WAF Policy at `/Common/base_policy.xml`.
 
@@ -688,7 +701,7 @@ HTTPS with WAF
          "certificate": " {{ User Generated Certificate }}",
          "privateKey": " {{ Generated Private Key matching Certificate }} "
       }
-      
+
     }
   }
 }
@@ -731,9 +744,9 @@ At scale, configurating BIG-IP by writing AS3 by hand for every application and 
 
 The copy-paste workflow can be streamlined without much effort by using a templating system. Here we take a look at one such templating system developed for AS3. It uses mustache to parse logicless templates, then generates a simple schema describing the template variables. The schema can be used to auto-generate a command line interface or a REST API, as well as HTML forms.
 
-The goal of a template system is to take the complexity and repetition out of creating and modifying declarations. We want to minimize the amount of information the declaration author needs to have to get the desired output declaration. 
+The goal of a template system is to take the complexity and repetition out of creating and modifying declarations. We want to minimize the amount of information the declaration author needs to have to get the desired output declaration.
 
-A template system is composed of two pieces, a template syntax for identifying places in the template text for substution, and a renderer for producing a valid declaration. The user provides parameters to the renderer and recieves a valid AS3 declaration in response. 
+A template system is composed of two pieces, a template syntax for identifying places in the template text for substution, and a renderer for producing a valid declaration. The user provides parameters to the renderer and recieves a valid AS3 declaration in response.
 
 An example template:
 
@@ -777,7 +790,7 @@ An example template:
 }
 ```
 
-Variables are encoded by surrounding them with curly braces, `{{` and `}}`. This declaration could be copied into Postman, and Postman variables work nicely with mustache for exporting. This allows prototyping and testing various AS3 declaration structures in Postman, and copying them into the template system. Contact the author of this document for information on auto-importing postman collections into a templating environment. 
+Variables are encoded by surrounding them with curly braces, `{{` and `}}`. This declaration could be copied into Postman, and Postman variables work nicely with mustache for exporting. This allows prototyping and testing various AS3 declaration structures in Postman, and copying them into the template system. Contact the author of this document for information on auto-importing postman collections into a templating environment.
 
 In this template some variables are annotated with a type, following the double colon. By default, all variables are treated as strings. It is useful in the schema generation phase to have types specified. This enables the schema to provide richer information for auto-generating front end html forms.
 
@@ -802,7 +815,7 @@ The reference implementation can be found __here__.
 
 **Using Templates to Manage Configuration Complexity**
 
-One way to manage the variety of configurations in an environment is to always deploy using templates. At an early stage, a network engineer or architect can discuss appropriate configuration patterns to use in their infrastructure. From these patterns, templates can be created that enable a wider audience (such as DevOps) to deploy an application with BIG-IP. 
+One way to manage the variety of configurations in an environment is to always deploy using templates. At an early stage, a network engineer or architect can discuss appropriate configuration patterns to use in their infrastructure. From these patterns, templates can be created that enable a wider audience (such as DevOps) to deploy an application with BIG-IP.
 
 
 ## Chapter 7: Advanced Features
@@ -822,7 +835,7 @@ One way to manage the variety of configurations in an environment is to always d
 
 ## Appendix B: Authorization Methods and RBAC
 
-AS3 is available only to users with admin priviledges. There is no way for AS3 to give permissions for a portion of a declaration. It is intended that permissions are handled by an upstream system that is then calling AS3 in it's control plane. 
+AS3 is available only to users with admin priviledges. There is no way for AS3 to give permissions for a portion of a declaration. It is intended that permissions are handled by an upstream system that is then calling AS3 in it's control plane.
 
 [Authentication and Authorization](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/authentication.html) for more information about AS3's authorization mechanisms.
 
@@ -983,7 +996,7 @@ For more information, see the official [AS3 API Doc](https://clouddocs.f5.com/pr
 
 [AS3 Schema Reference](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/schema-reference.html)
 
-On the other side of this link is a complete reference with every class 
+On the other side of this link is a complete reference with every class
 
 ----------
 
@@ -999,7 +1012,7 @@ On the other side of this link is a complete reference with every class
 
 # Glossary
 
-**Application** - A logical grouping of BIG-IP component configuration, usually grouped together for a shared function to deliver a particular network application or service. The simplest application is one Virtual Server attached to one Pool. 
+**Application** - A logical grouping of BIG-IP component configuration, usually grouped together for a shared function to deliver a particular network application or service. The simplest application is one Virtual Server attached to one Pool.
 
 **AS3** - Application Services 3. An iControl LX Extension that can be installed on BIG-IP to simplify managing a BIG-IP configuration.
 
@@ -1021,4 +1034,4 @@ On the other side of this link is a complete reference with every class
 
 ----------
 
-# FAQ 
+# FAQ
