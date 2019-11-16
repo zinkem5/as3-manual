@@ -239,9 +239,9 @@ Tenants are described in the declaration by adding a new property to our previou
 }
 ```
 
-POSTing this declaration again results in a no-change, we've specified a tenant. The active reader will notice this response body is slightly different, the object inside the results array has a new property-- `DavidTennant`. And, results is an array. Multiple tenants could be added to this declaration, and results for each tenant posted will be returned in this array. The tenant property will hold the name of the tenant matching the results object.
+POSTing this declaration again results in a no-change, we've specified a tenant. The active reader will notice this response body is slightly different, the object inside the results array has a new property-- `DavidTennant`. Multiple tenants could be added to this declaration, and each tenant posted will have a corresponding entry in the results array. The tenant property will hold the name of the tenant matching the results object.
 
-We've added a tenant but we still haven't _actually_ configured anything. So lets take a look at our first simple declaration. This declaration describes a basic http server, the bare minimum required to set up a simple load balancing scenario, along with the necesary HTTP information to post.
+We've added a tenant but we still haven't _actually_ configured anything. So lets take a look at our first simple declaration. This declaration describes a basic http server, the bare minimum required to set up a simple load balancing scenario, along with the necessary HTTP information to post.
 
 ```
 POST https://bigip.example.com/mgmt/shared/appsvcs/declare
@@ -285,11 +285,21 @@ Content-Type: application/json
 
 A bunch of stuff got added, lets break it down and take a look at each component.
 
-First off, we see a tenant named "MyTenant". Inside the tenant is a new property "MyApplication" with an object attached, with its own class property "Application". This creates an application called MyApplication inside the tenant MyTenant. No surprises here.
+First off, we see a tenant named "MyTenant". Inside the tenant is a new property "MyApplication" with an object attached, with its own class property "Application". This creates an application called MyApplication inside the tenant MyTenant. Tenant and Application names are totally up to the declaration author. The only constraint is they must start with a letter, and can only contain letters and numbers.
 
-Next we see a new property `"template" : "http"`, this property works in conjuction with `serviceMain`. `serviceMain` contains the VIP configuration and when a service corresponding to the template is attached, the template provides default parameters. In this case, the port on the virtual server is set to 80. Other templates include `https`, `tcp`, `udp` can used with serviceMain set to the appropriate service definition. This is a bit of configuration boilerplate, and it's not necessary to understand it completely at this phase, but it is a convention used in many examples.
+Next we see a new property `"template" : "http"`. This property applies some constraints to the object defined at `serviceMain`, which contains the virtual IP configuration. This template enforces that `serviceMain` must be of class `Service_HTTP` and will provide some default parameters. In this case, the port on the virtual server is set to 80. Other templates include `https`, `tcp`, `udp` can used with serviceMain create to an appropriate service definition. This is a bit of configuration boilerplate, and it's not necessary to understand it completely at this phase, but it is a convention used in many examples.
 
-`serviceMain` has our virtual server definition, and points to a pool. It is a service, denoted by the class `Service_HTTP`. The virtual addresses to use are listed in the `virtualAddresses` array, and as previously mentioned it will host on port 80. The server pool it will use is specified under `web_pool`. The string `web_pool` points to another property in the top level `Application` object. `web_pool` is the next property on the list.
+```
+/**
+ * By using "template":"generic", a VIP can be given a custom name. Service
+ * classes may still be used, but it is up to the user to make sure all
+ * properties are appropriately filled in.
+ */
+```
+
+We know now that `serviceMain` has our VIP definition, let's take a closer look at its properties. It is a service, denoted by the class `Service_HTTP`. The virtual addresses to use are listed in the `virtualAddresses` array, and as previously mentioned it will host on port 80 because of the defined template. There is another property specified here called `pool`, as you may have guessed this property specifies the pool the virtual server will load balance to, in this case `web_pool` as defined in the declaration.
+
+In this example, `web_pool` is defined as an Application property. For simple pointers like this, only the property name needs to be specified and AS3 will look in the application to find the property for validation.
 
 Inside `web_pool` we see it is a `Pool` class, specifying `members` with an array of objects with ip/port pairs. The important part to note here is the servicePort and serverAddresses, these specify the backend server IPs and the port they use to host.
 
@@ -309,7 +319,8 @@ Briefly covering a few example scenarios with multiple ip/port combinations on b
   ]
 }
 ```
-This specifies 2 servers each serving 1 port. 10.0.1.1 and 10.0.1.2 both serving HTTP at port 80.
+This basic example specifies 2 servers each serving 1 port. 10.0.1.1 and 10.0.1.2 both serving HTTP at port 80.
+
 
 ```json
 {
@@ -334,6 +345,7 @@ This specifies 2 servers each serving 1 port. 10.0.1.1 and 10.0.1.2 both serving
 ```
 This specifies 2 servers with 2 ports each. 10.0.1.1 and 10.0.1.2 both serving HTTP at port 8080 and 8081.
 
+
 ```json
 {
   "class": "Pool",
@@ -354,6 +366,7 @@ This specifies 2 servers with 2 ports each. 10.0.1.1 and 10.0.1.2 both serving H
 }
 ```
 This specifies 2 servers with 1 (different) port each-- 10.0.1.1 at 8080 and 10.0.1.2 at 8081.
+
 
 For more information, please see the AS3 Documentation [Composing an AS3 Declaration](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/composing-a-declaration.html)
 
@@ -421,7 +434,7 @@ Content-Type: application/json
 
 In this section all the steps for basic interaction with AS3 have been described. In the following sections, we will take a closer look at how AS3 works and conventions used when authoring declarations.
 
-## Chapter 3: schema'ing
+## Chapter 2: Introduction to AS3 Internals
 
 Before getting into the specifics of writing AS3 declarations, lets briefly take a look at how AS3 works.
 
@@ -475,15 +488,15 @@ For more details, and to see other ways to 'point' to objects on the BIG-IP and 
 
 [F5 JSON Schema](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/understanding-the-json-schema.html)
 
-## Chapter 4: BIG-IP Features in AS3
+## Chapter 3: BIG-IP Features in AS3
 
 Here we will use conventions we already know about to introduce some commonly used BIG-IP components to the declaration. At the end of the chapter we will have a declaration that contains many BIG-IP features that can be used as a starting point when writing new declarations.
 
 ### Adding https
 
-*In the application:
+_In the application:_
 
-Using `"template": "https"` in conjunction with will automatically host the virtual server on port 443 and provide an HTTP redirect rule on port 80.
+Using `"template": "https"` in conjunction with will automatically host the virtual server on port 443. Service_HTTPS provides an HTTP redirect rule on port 80.
 
 2 new additional properties will be added, a TLS_Server class and a Certificate class. In the example below, the TLS_Server is called `webtls` and the certificate `webcert`. The TLS Server is simple, and points to the certificate.
 
@@ -509,7 +522,7 @@ The Certificate will also be added:
 
 Certificates can be protected by passphrase, but this declaration does not use a passphrase protected key.
 
-*In the service:
+_In the service:_
 
 Using `"class" : "Service_HTTPS"` will provide the base for the HTTPS server, and take advantage of the https template being used.
 
@@ -712,7 +725,7 @@ HTTPS with WAF
 ### Apply iRule
 
 
-## Chapter 5: Service Discovery
+## Chapter 4: Service Discovery
 
 AS3 offers tools for automatically adding public cloud resources to BIG-IP LTM Pools. There is a Pool object that configures a poller that will poll AWS, Azure, and Google Cloud for new members. By tagging or labelling resources in the environment, AS3 will automatically add these to pools configured with that tag or label.
 
@@ -738,15 +751,15 @@ The example Pool definition here will work with a BIG-IP VE in AWS to discover E
 ```
 For more details covering different scenarios, see [Service Discovery in AS3](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/service-discovery.html).
 
-## Chapter 6: Templating
+## Chapter 5: Templating
 
-At scale, configurating BIG-IP by writing AS3 by hand for every application and service deployed may get tedious. Many will resort to copy pasting a few basic Application objects and tweaking them to fit their needs.
+At scale, configuring BIG-IP with hand written AS3 declarations for every application and service deployed may get tedious. Many will resort to copy pasting a few basic Application objects and tweaking them to fit their needs.
 
 The copy-paste workflow can be streamlined without much effort by using a templating system. Here we take a look at one such templating system developed for AS3. It uses mustache to parse logicless templates, then generates a simple schema describing the template variables. The schema can be used to auto-generate a command line interface or a REST API, as well as HTML forms.
 
 The goal of a template system is to take the complexity and repetition out of creating and modifying declarations. We want to minimize the amount of information the declaration author needs to have to get the desired output declaration.
 
-A template system is composed of two pieces, a template syntax for identifying places in the template text for substution, and a renderer for producing a valid declaration. The user provides parameters to the renderer and recieves a valid AS3 declaration in response.
+A template system is composed of two pieces, a template syntax for identifying places in the template text for substitution, and a renderer for producing a valid declaration. The user provides parameters to the renderer and receives a valid AS3 declaration in response.
 
 An example template:
 
@@ -818,7 +831,7 @@ The reference implementation can be found __here__.
 One way to manage the variety of configurations in an environment is to always deploy using templates. At an early stage, a network engineer or architect can discuss appropriate configuration patterns to use in their infrastructure. From these patterns, templates can be created that enable a wider audience (such as DevOps) to deploy an application with BIG-IP.
 
 
-## Chapter 7: Advanced Features
+## Chapter 6: Advanced Features
 
 - references on BIG IP
 - URLs that fetch from HTTP endpoints
