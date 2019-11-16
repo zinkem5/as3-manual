@@ -297,11 +297,39 @@ Next we see a new property `"template" : "http"`. This property applies some con
  */
 ```
 
-We know now that `serviceMain` has our VIP definition, let's take a closer look at its properties. It is a service, denoted by the class `Service_HTTP`. The virtual addresses to use are listed in the `virtualAddresses` array, and as previously mentioned it will host on port 80 because of the defined template. There is another property specified here called `pool`, as you may have guessed this property specifies the pool the virtual server will load balance to, in this case `web_pool` as defined in the declaration.
+We know now that `serviceMain` has our service definition, which specifies our VIP, its pools, and its policies. Let's take a closer look at its properties. It is a service, denoted by the class `Service_HTTP`. The virtual addresses to use are listed in the `virtualAddresses` array, and as previously mentioned it will host on port 80 because of the defined template. There is another property specified here called `pool`, as you may have guessed this property specifies the pool the virtual server will load balance to, in this case `web_pool` as defined in the declaration.
 
-In this example, `web_pool` is defined as an Application property. For simple pointers like this, only the property name needs to be specified and AS3 will look in the application to find the property for validation.
+In this example, `web_pool` is defined as an Application property. For simple pointers like this, only the property name needs to be specified and AS3 will reference that property in the application for validation and configuration.
 
-Inside `web_pool` we see it is a `Pool` class, specifying `members` with an array of objects with ip/port pairs. The important part to note here is the servicePort and serverAddresses, these specify the backend server IPs and the port they use to host.
+Inside `web_pool` we see it is a `Pool` class, specifying `members` with an array of objects with ip/port pairs. This example shows a simple definition where several servers are listening on the same port. The `servicePort` property contains the port, and the `serverAddresses` property specifies a list of IP addresses of the backend servers to load balance to.
+
+## Services
+
+Here is a basic list of service classes available, any of these can be used to specify a Virtual IP load balancing a class of traffic.
+
+
+`"class":"Service_HTTP"`
+
+A simple HTTP load balancer.
+
+`"class":"Service_HTTPS"`
+
+An HTTPS load balancer, requiring a server side certificate and key.
+
+`"class":"Service_TCP"`
+
+A layer 4 load balancer for TCP connections.
+
+`"class":"Service_UDP"`
+
+A layer 4 load balancer for UDP connections.
+
+`"class":"Service_FastL4"`
+
+A service using F5's Fast L4 feature.
+
+
+## Pools
 
 Briefly covering a few example scenarios with multiple ip/port combinations on backend servers:
 
@@ -653,17 +681,20 @@ HTTPS with a Monitor:
 
 WAF policies can be applied using the `policyWAF` property of the Application class.
 
-Applying a WAF profile uses a different kind of pointer than what we've seen so far. In this instance the declaration points to a WAF profile that already exists on BIG-IP. Shown is a `bigip` pointer to a WAF Policy at `/Common/base_policy.xml`.
+At time of writing, WAF Policies must be created through the BIG-IP GUI and exported/imported through traditional means to move them to the BIG-IP assigned to enforce them. AS3 is not yet capable of WAF Policy Composition. This means we need to point to an object on the BIG-IP that AS3 is unaware of.
 
-```
+In this case we can use a `bigip` pointer to a path BIG-IP, `/Common/base_policy.xml`, which holds our desired WAF Policy.
+
+```json
 {
   "class": "Service_HTTPS",
   "policyWAF": {
     "bigip": "/Common/base_policy.xml"
   }
+}
 ```
 
-HTTPS with WAF
+Full example of HTTPS with WAF
 
 ```json
 {
@@ -720,10 +751,125 @@ HTTPS with WAF
 }
 ```
 
-### Apply Endpoint Policies
-
 ### Apply iRule
 
+The `iRules` property can be set to an array in the Service definition.
+
+```json
+{
+  "class":"Application",
+  "serviceMain": {
+    "class": "Service_HTTPS",
+    "pool":"web_pool",
+    "iRules": [
+      "choose_pool"
+    ]
+  },
+  "web_pool": {
+    "class": "Pool",
+  },
+  "pvt_pool": {
+    "class": "Pool",
+  },
+  "choose_pool": {
+    "class": "iRule",
+    "iRule": "when CLIENT_ACCEPTED {\nif {[IP::client_addr] starts_with \"10.\"} {\n pool `*pvt_pool`\n }\n}"
+  }
+}
+```
+
+The AS3 iRule definition is the object with `"class":"iRule"`. It has a property `iRule` where any iRule TCL code may be specified.
+
+In this example, the iRule text will route the request to a different pool called `pvt_pool` for requests on the local network, those starting with `10.`. `pvt_pool` is specified in the AS3 declaration, and referenced by the iRule text. If the condition matches, the traffic is routed to `pvt_pool`.
+
+AS3 also provides a method of referencing existing iRules on BIG-IP using a `bigip` pointer as in the WAF Policy example.
+
+### Apply Endpoint Policies
+```json
+{
+  "class": "Application",
+  "serviceMain": {
+    "class": "Service_HTTP",
+    "policyEndpoint": "forward_policy"
+  },
+  "web_pool": {
+    "class": "Pool",
+  },
+  "forward_policy": {
+    "class": "Endpoint_Policy",
+    "rules": [{
+      "name": "forward_to_pool",
+      "conditions": [{
+        "type": "httpUri",
+        "path": {
+          "operand": "contains",
+          "values": ["example.com"]
+        }
+      }],
+      "actions": [{
+        "type": "forward",
+        "event": "request",
+        "select": {
+          "pool": {
+            "use": "web_pool"
+          }
+        }
+      }]
+    }]
+  }
+}
+```
+
+iRules provide flexibility, but Endpoint Policies are much faster. In this example, we set up an endpoint policy in AS3 that will forward HTTP requests with an appropriate host header to the specified pool.
+
+Endpoint policies are a little more complex, but can be composed in json. The backbone of this structure looks like this, a list of 'rules', each rule with their own pair of lists, one with conditions and another with actions.
+
+```json
+{
+  "class":"Endpoint_Policy",
+  "rules": [
+    {
+      "conditions": [],
+      "actions": []
+    },
+    {
+      "conditions": [],
+      "actions": []
+    }
+  ]
+}
+```
+
+The rules are applied in order, top to bottom. When conditions are met, actions are taken.
+
+Our example has one condition:
+
+```json
+{
+  "type": "httpUri",
+  "path": {
+    "operand": "contains",
+    "values": ["example.com"]
+  }
+}
+```
+This looks at the httpUri, and looks for 'example.com'. When the condition is matched, the following action is taken:
+
+```json
+{
+  "type": "forward",
+  "event": "request",
+  "select": {
+    "pool": {
+      "use": "web_pool"
+    }
+  }
+}
+```
+
+This action forwards HTTP requests to web_pool.
+
+This Endpoint Policy forwards all traffic with example.com in the URI to the pool, and drops traffic that does not meet the criteria.
 
 ## Chapter 4: Service Discovery
 
