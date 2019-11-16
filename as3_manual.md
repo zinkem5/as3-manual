@@ -148,7 +148,103 @@ Content-Type: application/json
 
 Now that we have AS3 installed on a BIG-IP, we can start working with the BIG-IP configuration. In the next chapter, we'll learn about AS3's primary API endpoint, and how to use it.
 
-## Chapter 1: AS3 Basics
+## Chapter 1: Understanding AS3's Declarative Model
+
+Before getting into the specifics of writing AS3 declarations, lets briefly take a look at how AS3 works and the underlying configuration model.
+
+At the highest level, AS3 provides an HTTP interface that a _declaration_ can be posted to. The declaration itself contains the desired configuration state of the target BIG-IP. The desired configuration is then applied atomically and success or error is reported to the end user.
+
+In simple terms, the declaration is an 'all or nothing' proposition. We apply all of the changes, or we apply none of the changes, and the declaration itself contains the entire configuration. Once applied to a BIG-IP, the declaration is the _source of truth_ of configuration of that device.
+
+However, with AS3 the declaration does not need to contain the everything on the BIG-IP. It may be broken up into _Tenants_. Each tenant is a complete unit of configuration, everything listed in the tenant config will get applied when that tenant is configured and everything not in that tenant will be removed from the tenant's namespace.
+
+AS3's default update mode is `selective` mode, which means it will only apply configuration changes to the tenants that are specified in the declaration. If tenants Tom, Dave, and Joe exist on the BIG-IP, and I only post Tom and Dave, only Tom and Dave's configuration will be updated.
+
+Tenants can be named however the user likes, but there is has a special tenant called `Common` that can be referenced by all the other tenants. Otherwise, the configuration contained within a tenant is isolated and cannot be shared.
+
+Each tenant is broken down into _Applications_ which can be thought of as a dictionary of every application owned by that particular tenant. Each Application contains the configuration necessary to connect a Virtual IP on BIG-IP to the server nodes in your infrastructure, and any associated policies and other configuration objects. Application names can be anything you want.
+
+Roughly outlined, the entire structure looks like this:
+
+```JSON
+{
+  "sales": {
+    "checkoutApp":{ ... }
+  },
+  "billing": {
+    "generateInvoiceApp":{ ... },
+    "deliverInvoiceApp":{ ... }
+  }
+}
+```
+
+The example here shows tenants for 'sales' and 'billing', with respective apps. Inside each application object is the configuration for a complete application.
+
+---
+
+The AS3 declaration must follow syntactic rules, and those rules are formally specified in a document called the _AS3 Schema_, sometimes just referred to as _the schema_. The AS3 Schema describes what is and isn't a valid AS3 declaration, and is used by AS3 as a first step in verifying a valid configuration has been sent. The AS3 Schema defines all the object types used in a declaration. We were introduced to a few of those objects in the last chapter, `ADC`, `Tenant`, `Application`, `Service_HTTP`. Properties inside these classes have special meanings and are used to configure specific components of an application on a BIG-IP. A complete reference can be found in the documentation:
+
+[AS3 Schema Reference](#as3-schema-reference)
+
+AS3 uses a diff engine to determine which configuration changes need to be made to get the configuration from its current state into the state described in the declaration. When a declaration is submitted, AS3 takes a snapshot of the current BIG-IP configuration via iControl REST and converts it to an AS3 declaration.
+
+The declarations are then diffed and AS3 generates a set of TMSH commands that represent the diff. These commands configure declaration components that do not already exist on BIG-IP, and remove those components that do not exist in the declaration. This means that any configuration applied in the BIG-IP GUI will not be preserved if it is not included in subsequent declarations. For this reason, is it not recommended to manually configure any partitions on the BIG-IP which are managed by AS3.
+
+
+Since AS3 will apply the changes necessary to get the BIG-IP from its current state into the desired state.
+
+```
+/**
+ *  Because AS3 will make any changes necessary to finish in the state described
+ *  in the declaration, manual configuration changes made to BIG-IP will likely
+ *  be lost when a new declaration is sent. It is not recommended to make manual
+ *  changes to a BIG-IP managed by AS3 except under special circumstances.
+ */
+```
+
+Except for Common, all AS3 tenant configs are applied serially. AS3 will query the state of an entire tenant, apply the configuration, and move on to the next tenant. Common is an exception, due to shared ownership of objects Common is configured both before and after the list of user tenants.
+
+This has performance implications if you are thinking about ways to organize your applications. Tenants with many applications will take longer to configure, and configuring multiple tenants simultaneously is also slower than configuring only a single tenant. There is a balancing act that must be played based on your use case. If the user commonly configures many applications that are organized into the same group, they may want to use a tenant for these applications. If the user often applies small changes single applications that have no logical grouping, a tenant per application model can work best.
+
+---
+
+Sometimes, you can point to other places in the declaration when specifying an object. This can be useful for sharing objects between configuration, or keeping your declaration maintainable and readable. We saw an example in the last chapter. The Application declaration was as follows:
+
+```json
+"MyApplication": {
+    "class": "Application",
+    "template": "http",
+    "serviceMain": {
+        "class": "Service_HTTP",
+        "virtualAddresses": [
+            "10.0.0.1"
+        ],
+        "pool": "web_pool"
+    },
+    "web_pool": {
+        "class": "Pool",
+        "members": [
+            {
+                "servicePort": 80,
+                "serverAddresses": [
+                    "10.0.1.1",
+                    "10.0.1.2"
+                ]
+            }
+        ]
+    }
+}
+```
+
+This is an example of the simplest reference in an AS3 declaration. Inside the `Application` object is a property called `web_pool`, and the `pool` property of `serviceMain` has a value of `web_pool` pointing to the value specified inside the Application. These properties are only available to the application they are defined within. This pool could be used for another vip inside this application, but could not be used by other application objects.
+
+For more details, and to see other ways to 'point' to objects on the BIG-IP and in the declaration, the following documentation is recommended:
+
+[AS3 Declaration Purpose and Function](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/declaration-purpose-function.html)
+
+[F5 JSON Schema](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/understanding-the-json-schema.html)
+
+## Chapter 2: Declaration Authoring Basics
 
 ### AS3 /declare endpoint
 
@@ -229,7 +325,7 @@ AS3 organizes components inside of Applications, and Applications are grouped to
 
 Tenants are described in the declaration by adding a new property to our previous JSON object, and assigning another object to it with the "class" property set to Tenant. Adding a tenant named DavidTennant would look like this:
 
-```
+```json
 {
   "class":"ADC",
   "schemaVersion": "3.0.0",
@@ -402,7 +498,7 @@ For more information, please see the AS3 Documentation [Composing an AS3 Declara
 
 POSTing the declaration to `/mgmt/shared/appsvcs/declare` from the previous section should yield the following response:
 
-```
+```json
 {
     "results": [
         {
@@ -462,59 +558,7 @@ Content-Type: application/json
 
 In this section all the steps for basic interaction with AS3 have been described. In the following sections, we will take a closer look at how AS3 works and conventions used when authoring declarations.
 
-## Chapter 2: Introduction to AS3 Internals
 
-Before getting into the specifics of writing AS3 declarations, lets briefly take a look at how AS3 works.
-
-AS3 uses a diff engine to determine which configuration changes need to be made, to get the configuration from it's previous state into what is described in the declaration. When a declaration is posted, AS3 takes a snapshot of the current BIG-IP configuration and translates it into a canonical form that can be diffed against the incoming declaration. Because of this, AS3 will make only the changes necessary to put the BIG-IP in the desired state. This also means that any configuration applied in the BIG-IP GUI will not be preserved if it is not included in subsequent declarations. For this reason, is it not recommended to manually configure any partitions on the BIG-IP which are managed by AS3.
-
-```
-/**
- *  Because AS3 will make any changes necessary to finish in the state described in the declaration,
- *  manual configuration changes made to BIG-IP will likely be lost. It is not recommended to make
- *  changes to a BIG-IP that is configured through AS3 except in certain cases.
- */
-```
-
-The AS3 declaration must follow rules, and those rules are formally specified in a document called the AS3 Schema. The AS3 Schema describes what is and isn't a valid AS3 declaration, and is used by AS3 as a first step in verifying a valid configuration has been sent. The AS3 Schema defines all the object types used in a declaration. We were introduced to a few of those objects in the last chapter, `ADC`, `Tenant`, `Application`, `Service_HTTP`. Properties inside these classes have special meanings and are used to configure specific components of the BIG-IP. A complete reference can be found in the documentation:
-
-[AS3 Schema Reference](#as3-schema-reference)
-
-Sometimes, you can point to other places in the declaration when specifying an object. This can be useful for sharing objects between configuration, or keeping your declaration maintainable and readable. We saw an example in the last chapter. The Application declaration was as follows:
-
-```
-"MyApplication": {
-    "class": "Application",
-    "template": "http",
-    "serviceMain": {
-        "class": "Service_HTTP",
-        "virtualAddresses": [
-            "10.0.0.1"
-        ],
-        "pool": "web_pool"
-    },
-    "web_pool": {
-        "class": "Pool",
-        "members": [
-            {
-                "servicePort": 80,
-                "serverAddresses": [
-                    "10.0.1.1",
-                    "10.0.1.2"
-                ]
-            }
-        ]
-    }
-}
-```
-
-This is an example of the simplest reference in an AS3 declaration. Inside the `Application` object is a property called `web_pool`, and the `pool` property of `serviceMain` has a value of `web_pool` pointing to the value specified inside the Application. These properties are only available to the application they are defined within. This pool could be used for another vip inside this application, but could not be used by other application objects.
-
-For more details, and to see other ways to 'point' to objects on the BIG-IP and in the declaration, the following documentation is recommended:
-
-[AS3 Declaration Purpose and Function](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/declaration-purpose-function.html)
-
-[F5 JSON Schema](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/understanding-the-json-schema.html)
 
 ## Chapter 3: BIG-IP Features in AS3
 
@@ -528,7 +572,7 @@ Using `"template": "https"` in conjunction with will automatically host the virt
 
 2 new additional properties will be added, a TLS_Server class and a Certificate class. In the example below, the TLS_Server is called `webtls` and the certificate `webcert`. The TLS Server is simple, and points to the certificate.
 
-```
+```json
 "webtls" : {
   "class": "TLS_Server",
   "certificates": [{
@@ -539,7 +583,7 @@ Using `"template": "https"` in conjunction with will automatically host the virt
 
 The Certificate will also be added:
 
-```
+```json
 "webcert": {
    "class": "Certificate",
    "remark": "in practice we recommend using a passphrase",
@@ -572,7 +616,7 @@ Putting it all together we have:
       "serviceMain": {
         "class": "Service_HTTPS",
         "virtualAddresses": ["10.0.0.1"],
-        "pool": "web_pool"
+        "pool": "web_pool",
 
         "serverTLS" : "webtls"
 
