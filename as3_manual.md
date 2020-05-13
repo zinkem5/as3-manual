@@ -1,22 +1,44 @@
+# The AS3 Manual
+
 ![AS3 Logo](./AS3_Robot.png)
 
-# The AS3 Manual
+----------
 
 Videos
 - YouTube: [AS3 Overview](https://youtu.be/cMl3AOtMcUo)
 - YouTube: [Using AS3](https://youtu.be/NJjcUUtjnJU)
 
-Skip Ahead
-- [Quick Start](#quick-start)
-- [AS3 Guide](#guide)
+References
 - [API reference](#as3-rest-api-endpoints)
 - [AS3 Schema Reference](#as3-schema-reference)
 
-This guide is for anyone looking to get started with AS3 and already has a basic familiarity with BIG-IP. This guide assumes understanding of the HTTP protocol. Use of a REST client like curl or Postman is recommended.
-
 ----------
 
-## Quick Start
+## Introduction
+[introduction]: introduction
+
+The goal of this manual is to provide a comprehensive understanding of AS3 from
+the ground up.
+The guide is broken up into the following sections.
+
+* [Configuring BIG-IP with AS3](#configuring-big-ip-with-as3)
+
+  The first section provides a primer on AS3 and common BIG-IP configurations.
+
+* [Templating AS3 with FAST](#templating-as3-with-fast)  
+
+  The second section will cover some templating strategies, and using F5's FAST templating framework to manage appications within AS3 declarations.
+
+* [Declarative APIs](#declarative-apis)
+
+  A treatise on Declarative APIs and AS3's API philosophy.
+
+* [Reference](#reference)
+
+  This section has a glossary, links, and AS3 API reference.
+
+## Configuring BIG-IP with AS3
+[configuring-big-ip-with-as3]: configuring-big-ip-with-as3
 
 ### Install AS3
 
@@ -31,7 +53,7 @@ AS3 can be installed on BIG-IP like any other iControl LX Extension, from the GU
 
 ### POST to /mgmt/shared/appsvcs/declare
 
-Using a REST client, the following declaration can be applied using AS3. This is close to the simplest example of an AS3 declaration that can load balance to servers using LTM.
+Using a REST client such as Postman, the following declaration can be deployed in an HTTP POST body. This is a simple but functional example of an AS3 declaration to load balance traffic to a pool.
 
 More examples can be found in [AS3 Example Declarations](#as3-example-declarations).
 
@@ -48,8 +70,6 @@ Content-Type: application/json
     "class": "ADC",
     "schemaVersion": "3.0.0",
     "id": "0123-4567-8910",
-    "label": "Sample 1",
-    "remark": "Basic HTTP with Monitor",
     "MyTenant": {
       "class": "Tenant",
       "MyApplication": {
@@ -62,9 +82,6 @@ Content-Type: application/json
         },
         "web_pool": {
           "class": "Pool",
-          "monitors": [
-            "http"
-          ],
           "members": [
             {
               "servicePort": 80,
@@ -82,7 +99,7 @@ Content-Type: application/json
 
 ```
 
-Once the configuration is applied, a GET to the same endpoint produces the current configuration.
+Once the declaration is POSTed, a GET to the same endpoint will retrieve the current declaration. The current declaration is the *source of truth* of the BIG-IP configuration.
 
 ### GET /mgmt/shared/appsvcs/declare
 
@@ -91,6 +108,16 @@ GET https://bigip.example.com/mgmt/shared/appsvcs/declare
 Authorization: BASIC
 Content-Type: application/json
 ```
+
+
+
+
+
+
+
+
+
+
 
 ### Explore AS3, become an expert!
 
@@ -941,6 +968,14 @@ The example Pool definition here will work with a BIG-IP VE in AWS to discover E
 ```
 For more details covering different scenarios, see [Service Discovery in AS3](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/service-discovery.html).
 
+
+
+
+
+## Templating AS3 with FAST
+[templating-as3-with-fast]: templating-as3-with-fast
+
+
 ## Chapter 5: Templating
 
 At scale, configuring BIG-IP with hand written AS3 declarations for every application and service deployed may get tedious. Many will resort to copy pasting a few basic Application objects and tweaking them to fit their needs.
@@ -1021,12 +1056,71 @@ The reference implementation can be found __here__.
 One way to manage the variety of configurations in an environment is to always deploy using templates. At an early stage, a network engineer or architect can discuss appropriate configuration patterns to use in their infrastructure. From these patterns, templates can be created that enable a wider audience (such as DevOps) to deploy an application with BIG-IP.
 
 
+
+# Declarative APIs
+[declarative-apis]: declarative-apis
+
+AS3 is a declarative API.
+
+Idempotence.
+
+Transparency of state.
+
+
+
+
+
+
+
+
+
+
+
 ## Chapter 6: Advanced Features
 
 - references on BIG IP
 - URLs that fetch from HTTP endpoints
 
-## Appendix A: Troubleshooting
+
+
+## Authorization Methods and RBAC
+
+AS3 is available only to users with admin priviledges. There is no way for AS3 to give permissions for a portion of a declaration. It is intended that permissions are handled by an upstream system that is then calling AS3 in it's control plane.
+
+[Authentication and Authorization](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/authentication.html) for more information about AS3's authorization mechanisms.
+
+----------
+
+## Reference
+[reference]: reference
+
+* [AS3 Schema Reference](#as3-schema-reference)
+* [AS3 Example Declarations](#AS3-Example-Declarations)
+* [Glossary](#glossary)
+* [Troubleshooting Links](#troubleshooting-links)
+* [AS3 REST API Endpoints](#AS3-REST-API-Endpoints)
+
+----------
+
+### AS3 Schema Reference
+
+[AS3 Schema Reference](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/schema-reference.html)
+
+On the other side of this link is a complete reference with every class
+
+----------
+
+### AS3 Example Declarations
+
+[Basic Examples](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/examples.html)
+
+[Intermediate Examples](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/declarations/)
+
+[A Declaration Using All Properties](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/declarations/all-properties.html)
+
+----------
+
+### Troubleshooting Links
 
 [Troubleshooting](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/troubleshooting.html)
 
@@ -1036,23 +1130,33 @@ One way to manage the variety of configurations in an environment is to always d
 
 [File an issue](https://github.com/F5Networks/f5-appsvcs-extension/issues)
 
-## Appendix B: Authorization Methods and RBAC
+----------
 
-AS3 is available only to users with admin priviledges. There is no way for AS3 to give permissions for a portion of a declaration. It is intended that permissions are handled by an upstream system that is then calling AS3 in it's control plane.
+### Glossary
 
-[Authentication and Authorization](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/authentication.html) for more information about AS3's authorization mechanisms.
+**Application** - A logical grouping of BIG-IP component configuration, usually grouped together for a shared function to deliver a particular network application or service. The simplest application is one Virtual Server attached to one Pool.
 
-## Appendix C: Patch a Declaration
+**AS3** - Application Services 3. An iControl LX Extension that can be installed on BIG-IP to simplify managing a BIG-IP configuration.
 
-Declarations can be changed on BIG-IP using a PATCH call to `/declare`. The JSON body of the HTTP PATCH will contain a specification for changing the declaration. AS3 will apply the patch, and then evaluate the declaration.
+**AS3 Class** - An object defined in the AS3 schema, each class has a `class` property with a class name, such as `ADC` or `Application`.
 
-PATCH is not a way to get better performance from AS3. PATCH is actually causing AS3 to do _more_ work than when an entire tenant declaration is POSTed to `/declare`.
+**AS3 Schema** - The master definition of all the properties that can be used in an AS3 declaration to configure a BIG-IP. The AS3 schema represents components that can be configured through AS3.
 
-More details on how to patch can be found in the [PATCH documentation](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/as3-api.html#method-patch).
+**BIG-IP** - An Application Delivery Controller built by F5 Networks.
+
+**Declaration** - A JSON object conforming to the AS3 schema containing a specific BIG-IP configuration. The declaration represents an actual BIG-IP configuration.
+
+**iControl REST** (ICR) - An alternative REST interface for interacting with BIG-IP.
+
+**iControl LX Extensions** (icrlx) - RPMs containing Node.js applications that can be installed to extend BIG-IPs base functionality.
+
+**Service Discovery** - A set of features in AS3 for automatically adding new servers to a pool. This can be used in conjunction with AWS, Azure, and other cloud services to automatically detect new pool members as they are created.
+
+**Tenant** - A group of applications, typically grouped based on who owns a set of applications.
 
 ----------
 
-# AS3 REST API Endpoints
+### AS3 REST API Endpoints
 
 All endpoints use `/mgmt/shared/appsvcs` as a base.
 
@@ -1107,7 +1211,13 @@ POST can be used to apply a declaration to AS3.<br/><br/> Using the AS3 class, t
 #### PATCH
 ##### Description:
 
-PATCH can be used to change a small snippet of an AS3 declaration. For more info, see the [AS3 API Docs entry on PATCH](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/as3-api.html#method-patch).
+PATCH can be used to change a small snippet of an AS3 declaration.
+
+Declarations can be changed on BIG-IP using a PATCH call to `/declare`. The JSON body of the HTTP PATCH contains a directive for manipulating the declaration, according to the syntax in [RFC6902](https://tools.ietf.org/html/rfc6902). AS3 will apply the patch according to the body, and then deploy the resulting declaration.
+
+PATCH is not a way to get better performance from AS3, and in many cases performance will degrade with frequent use.
+
+More details on how to patch can be found in the [PATCH documentation](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/as3-api.html#method-patch).
 
 ##### Responses
 
@@ -1192,49 +1302,3 @@ Used to fetch tasks when using `async=true`
 | 200 | OK |
 
 For more information, see the official [AS3 API Doc](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/as3-api.html)
-
-----------
-
-# AS3 Schema Reference
-
-[AS3 Schema Reference](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/refguide/schema-reference.html)
-
-On the other side of this link is a complete reference with every class
-
-----------
-
-# AS3 Example Declarations
-
-[Basic Examples](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/examples.html)
-
-[Intermediate Examples](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/declarations/)
-
-[A Declaration Using All Properties](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/declarations/all-properties.html)
-
-----------
-
-# Glossary
-
-**Application** - A logical grouping of BIG-IP component configuration, usually grouped together for a shared function to deliver a particular network application or service. The simplest application is one Virtual Server attached to one Pool.
-
-**AS3** - Application Services 3. An iControl LX Extension that can be installed on BIG-IP to simplify managing a BIG-IP configuration.
-
-**AS3 Class** - An object defined in the AS3 schema, each class has a `class` property with a class name, such as `ADC` or `Application`.
-
-**AS3 Schema** - The master definition of all the properties that can be used in an AS3 declaration to configure a BIG-IP. The AS3 schema represents components that can be configured through AS3.
-
-**BIG-IP** - An Application Delivery Controller built by F5 Networks.
-
-**Declaration** - A JSON object conforming to the AS3 schema containing a specific BIG-IP configuration. The declaration represents an actual BIG-IP configuration.
-
-**iControl REST** (ICR) - An alternative REST interface for interacting with BIG-IP.
-
-**iControl REST Extensions** (icrx) - RPMs containing Node.js applications that can be installed to extend BIG-IPs base functionality.
-
-**Service Discovery** - A set of features in AS3 for automatically adding new servers to a pool. This can be used in conjunction with AWS, Azure, and other cloud services to automatically detect new pool members as they are created.
-
-**Tenant** - A group of applications, typically grouped based on who owns a set of applications.
-
-----------
-
-# FAQ
