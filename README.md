@@ -4,7 +4,7 @@ The AS3 Manual is meant to supplement the AS3 documentation on clouddocs present
 
 Read here: [The AS3 Manual](as3_manual.md)
 
-## Table of Contents
+The document looks best in VS Code with a [mermaid support extension](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid)
 
 # Introduction
 [introduction]: introduction
@@ -35,3 +35,12 @@ the ground up. The guide is broken up into the following sections that are organ
 * [Reference](as3_manual.md#reference)
 
   This section has a glossary, links, and AS3 API reference.
+
+
+## Notes on reading
+
+The document looks best in VS Code with a [mermaid support extension](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid)
+
+[The word on mermaid support in GitHub](https://github.community/t5/How-to-use-Git-and-GitHub/Feature-Request-Support-Mermaid-markdown-graph-diagrams-in-md/m-p/41177#M9805)
+
+[GitLab Supports Mermaid](https://docs.gitlab.com/ee/user/markdown.html)
