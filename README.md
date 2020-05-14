@@ -1,4 +1,4 @@
-## Introduction
+# Introduction
 
 The AS3 Manual is meant to supplement the AS3 documentation on clouddocs presented [here](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/).
 
@@ -6,8 +6,7 @@ Read here: [The AS3 Manual](as3_manual.md)
 
 The document looks best in VS Code with a [mermaid support extension](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid)
 
-# Introduction
-[introduction]: introduction
+# Sections
 
 The goal of this manual is to provide a comprehensive understanding of AS3 from
 the ground up. The guide is broken up into the following sections that are organized in a suggested reading order.
