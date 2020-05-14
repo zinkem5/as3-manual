@@ -14,16 +14,23 @@ References
 
 ----------
 
-## Introduction
+# Introduction
 [introduction]: introduction
 
 The goal of this manual is to provide a comprehensive understanding of AS3 from
-the ground up.
-The guide is broken up into the following sections.
+the ground up. The guide is broken up into the following sections that are organized in a suggested reading order.
+
+* [First Declaration](#first-declaration)
+
+  This is a quick tour of getting AS3 installed, confirming installation, and deploying a first declaration. At the end of this section is a list of links to official documentation that provides more information for getting up and running.
+
+* [AS3 Modes of Operation](#as3-modes-of-operation)
+
+  An overview of different configuration options for AS3. This is directed at network owners and admins when architecting their control planes.
 
 * [Configuring BIG-IP with AS3](#configuring-big-ip-with-as3)
 
-  The first section provides a primer on AS3 and common BIG-IP configurations.
+  The configuration section provides a primer on AS3 and common BIG-IP configurations. This will be most useful to application owners and network operators that may need to update the configuration of the BIG-IP as new applications are brought online.
 
 * [Templating AS3 with FAST](#templating-as3-with-fast)  
 
@@ -37,10 +44,11 @@ The guide is broken up into the following sections.
 
   This section has a glossary, links, and AS3 API reference.
 
-## Configuring BIG-IP with AS3
-[configuring-big-ip-with-as3]: configuring-big-ip-with-as3
 
-### Install AS3
+
+# First Declaration
+
+### Install AS3 on a BIG-IP
 
 Prerequisites:
 
@@ -50,6 +58,22 @@ Prerequisites:
 AS3 can be installed on BIG-IP like any other iControl LX Extension, from the GUI in the Package Management LX page.
 
 [Complete guide to installing/uninstalling](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/installation.html)
+
+### Verifying Installation
+
+[Install AS3](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/installation.html)
+
+Using the the BIG-IP's `admin` username and password, the installation can be verified by confirming a 200 status code from the following HTTP call:
+
+```
+GET https://bigip.example.com/mgmt/shared/appsvcs/info
+Authorization: BASIC
+Content-Type: application/json
+```
+
+[Authentication and Authorization](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/authentication.html) for more information about AS3's authorization mechanisms.
+
+Now that we have AS3 installed on a BIG-IP, we can start working with the BIG-IP configuration. In the next chapter, we'll learn about AS3's primary API endpoint, and how to use it.
 
 ### POST to /mgmt/shared/appsvcs/declare
 
@@ -101,25 +125,15 @@ Content-Type: application/json
 
 Once the declaration is POSTed, a GET to the same endpoint will retrieve the current declaration. The current declaration is the *source of truth* of the BIG-IP configuration.
 
-### GET /mgmt/shared/appsvcs/declare
-
 ```
 GET https://bigip.example.com/mgmt/shared/appsvcs/declare
 Authorization: BASIC
 Content-Type: application/json
 ```
 
+The response should contain the declaration previously posted.
 
-
-
-
-
-
-
-
-
-
-### Explore AS3, become an expert!
+### Explore AS3
 
 The following links are recommended reading from the official AS3 documentation.
 
@@ -138,9 +152,134 @@ The following links are recommended reading from the official AS3 documentation.
 | [Official AS3 Documentation from F5](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/) | Top level documentation link for AS3. |
 | [GitHub](https://github.com/F5Networks/f5-appsvcs-extension) | New releases, updated schema, and file issue. |
 
+-----------
+
+# AS3 modes of operation
+
+- Dotted lines in the graphs represent calls over the network.
+- Solid lines are co-located in the same device/rack.
+- Thick lines represent the densest CPU bound workflows.
+
+## The Standard Model
+
+This is the basic synchronous model of AS3. Most conversations revolving around AS3 only need this level of detail.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AS3 Worker
+    participant BIG IP
+    Client-->>AS3 Worker: POST /declare {{desired}}
+    AS3 Worker->>+BIG IP: Query State
+    BIG IP->>-AS3 Worker: {{actual}}
+    AS3 Worker->>AS3 Worker: diff {{desired}} {{actual}}
+    AS3 Worker->>AS3 Worker: generate TMSH from diff
+    AS3 Worker->>+BIG IP: run TMSH
+    BIG IP->>-AS3 Worker: result (pass/fail)
+    AS3 Worker-->>Client: Success or Failure
+
+```
+
+## The Async Model
+
+This is basically the same as the Standard Model, but the client will recieve a response immediately and must poll a task endpoint to retrieve deployment results.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AS3 Worker
+    participant BIG IP
+    Client-->>AS3 Worker: POST /declare {{desired}}
+    AS3 Worker-->>Client: TaskId
+    par Client Poller
+    loop regular interval
+        Client-->>AS3 Worker: Query task state
+        AS3 Worker-->>Client: In Progress
+    end
+
+    and configure BIG IP
+        AS3 Worker->>+BIG IP: Query State
+        BIG IP->>-AS3 Worker: {{actual}}
+        AS3 Worker->>AS3 Worker: diff {{desired}} {{actual}}
+        AS3 Worker->>AS3 Worker: generate TMSH from diff
+        AS3 Worker->>+BIG IP: run TMSH
+        BIG IP->>-AS3 Worker: result (pass/fail)
+    end
+    loop regular interval
+        Client-->>AS3 Worker: Query task state
+        AS3 Worker-->>Client: Success / Failure
+    end
+```
+
+Any synchronous call to AS3 will return a TaskId if the declaration takes too long. The client must be prepared to log the task id for later confirmation, or poll the task endpoint to report the result of the deployment. This mode was introduced to prevent client HTTP libraries and infrastructure proxies from timing out the request during configuration.
+
+In both the Standard and Async models, AS3 is running on BIG-IP. There are also many ways to run AS3 outside of BIG-IP.
+
+## AS3 In Container
+
+AS3 in Container, or AS3iC, is a mode of operating AS3 without installing it on BIG-IP by running it in a container. The basic difference is that AS3's state query and TMSH configuration messages are sent over the network. A target can be supplied to the ADC object to configure a trusted BIG-IP, or parameters may be included in the AS3 object to send a declaration to any BIG-IPs you have the credentials for.
+
+AS3 in Container operates in asynchronous mode as well, but we will only show synchronous mode for sake of brevity.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AS3 Worker
+    participant Target BIG IP
+    Client->>AS3 Worker: POST /declare {{desired}}
+    AS3 Worker-->>+Target BIG IP: Query State
+    Target BIG IP-->>-AS3 Worker: {{actual}}
+    AS3 Worker->>AS3 Worker: diff {{desired}} {{actual}}
+    AS3 Worker->>AS3 Worker: generate TMSH from diff
+    AS3 Worker-->>+Target BIG IP: run TMSH
+    Target BIG IP-->>-AS3 Worker: result (pass/fail)
+    AS3 Worker->>Client: Success or Failure
+```
+
+This mode of operation has the advantage that a single running instance of AS3 may be used to configure multiple BIG-IPs in parallel. The target BIG-IPs must be known by or managed by the client, but AS3 provides a form of routing for deployments.
+
+The downside to running AS3iC is that performance will take a hit. As part of Querying state, AS3 must send dozens of HTTP requests to the underlying iControl REST API that presents the device state. These REST calls then use BIG-IP control plane processes to gather and translate state. Moving AS3 off the device does not greatly impact the amount of work that must still be done on the device to query state and configure BIG-IP.
+
+Calls made to BIG-IP from the container will be serviced at a lower rate, and through a layer of network latency, causing the time to deploy a declaration to increase. Exact latencies are hard to predict and may depend on your network toplogy. It may be possible to tune BIG-IP to alleviate much of the latency degradation.
+
+These are the three modes of operation most commonly talked about, but there are other modes of operation to discuss as well. The first of which attempts to alleviate some of the problems with AS3iC while retaining its desirable characteristics as a request router.
+
+## AS3iC as a Router to AS3 Agents
+
+In this model, AS3 is deployed on BIG-IP and as a container. The container acts as a centralized node to distribute declarations to BIG-IPs. Permissions can be granted to operate the single node, and the node can be granted permissions to operate on network segments containing BIG-IP software or hardware.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AS3iC Router
+    participant Target AS3 Worker
+    participant Target BIG IP
+    Client->>AS3iC Router: POST /declare {{desired}}
+    Target AS3 Worker->>Target BIG IP: Query State
+    Target BIG IP->>Target AS3 Worker: {{actual}}
+    Target AS3 Worker->>Target AS3 Worker: diff {{desired}} {{actual}}
+    AS3iC Router-->Target AS3 Worker: proxy requests to {{target}}
+    Target AS3 Worker->>Target AS3 Worker: generate TMSH from diff
+    Target AS3 Worker->>Target BIG IP: run TMSH
+    Target BIG IP->>Target AS3 Worker: result (pass/fail)
+    AS3iC Router-->>Client: Success or Failure
+```
+
+This can be a good option that offers a centralized AS3 API Gateway but does not suffer the performance issues of the AS3iC solution alone. This mode also works in both synchronous and asynchrous modes.
+
+
+
+
+
+
+
+
+
+
 ----------
 
-# Guide
+# Configuring BIG-IP with AS3
+[configuring-big-ip-with-as3]: configuring-big-ip-with-as3
 
 ## Preface: Why AS3?
 
@@ -159,21 +298,7 @@ Most of all AS3 will remain _backward compatible_ with old declarations. This AS
  */
 ```
 
-## Chapter 0: Verifying Installation
 
-[Install AS3](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/installation.html)
-
-Using the the BIG-IP's `admin` username and password, the installation can be verified by confirming a 200 status code from the following HTTP call:
-
-```
-GET https://bigip.example.com/mgmt/shared/appsvcs/info
-Authorization: BASIC
-Content-Type: application/json
-```
-
-[Authentication and Authorization](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extension/latest/userguide/authentication.html) for more information about AS3's authorization mechanisms.
-
-Now that we have AS3 installed on a BIG-IP, we can start working with the BIG-IP configuration. In the next chapter, we'll learn about AS3's primary API endpoint, and how to use it.
 
 ## Chapter 1: Understanding AS3's Declarative Model
 
